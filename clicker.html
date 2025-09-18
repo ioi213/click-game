@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Clicker Game</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+        #clicker-container, #fight-container, #quest-container {
+            text-align: center;
+        }
+        #shop-container {
+            border-left: 2px solid #ccc;
+            padding-left: 20px;
+        }
+        #quest-container {
+            border-right: 2px solid #ccc;
+            padding-right: 20px;
+        }
+        #clicker-button {
+            padding: 20px 40px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        #score {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .shop-item, .fight-item, .quest-item {
+            margin-bottom: 10px;
+        }
+        .shop-item button, #attack-button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #enemy-health-bar-container {
+            width: 200px;
+            height: 20px;
+            border: 1px solid #ccc;
+            margin: 10px auto;
+        }
+        #enemy-health-bar {
+            height: 100%;
+            background-color: red;
+            width: 100%;
+        }
+        .completed-quest {
+            text-decoration: line-through;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="quest-container">
+            <h2>Quests</h2>
+            <div id="quest-list"></div>
+        </div>
+        <div id="clicker-container">
+            <div id="score">0</div>
+            <button id="clicker-button">Click me!</button>
+        </div>
+        <div id="fight-container">
+            <h2>Fight</h2>
+            <div class="fight-item">
+                <p>Enemy: <span id="enemy-name">Goblin</span></p>
+                <p>HP: <span id="enemy-hp">100</span> / <span id="enemy-max-hp">100</span></p>
+                <div id="enemy-health-bar-container">
+                    <div id="enemy-health-bar"></div>
+                </div>
+                <button id="attack-button">Attack (Cost: 1)</button>
+            </div>
+        </div>
+        <div id="shop-container">
+            <h2>Shop</h2>
+            <div class="shop-item">
+                <p>Auto Clicker: <span id="auto-clicker-level">0</span></p>
+                <p>Cost: <span id="auto-clicker-cost">10</span></p>
+                <button id="buy-auto-clicker">Buy</button>
+            </div>
+            <div class="shop-item">
+                <p>Click Multiplier: <span id="click-multiplier-level">1</span>x</p>
+                <p>Cost: <span id="click-multiplier-cost">20</span></p>
+                <button id="buy-click-multiplier">Buy</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scoreElement = document.getElementById('score');
+        const clickerButton = document.getElementById('clicker-button');
+
+        const autoClickerLevelElement = document.getElementById('auto-clicker-level');
+        const autoClickerCostElement = document.getElementById('auto-clicker-cost');
+        const buyAutoClickerButton = document.getElementById('buy-auto-clicker');
+
+        const clickMultiplierLevelElement = document.getElementById('click-multiplier-level');
+        const clickMultiplierCostElement = document.getElementById('click-multiplier-cost');
+        const buyClickMultiplierButton = document.getElementById('buy-click-multiplier');
+
+        const enemyNameElement = document.getElementById('enemy-name');
+        const enemyHpElement = document.getElementById('enemy-hp');
+        const enemyMaxHpElement = document.getElementById('enemy-max-hp');
+        const enemyHealthBarElement = document.getElementById('enemy-health-bar');
+        const attackButton = document.getElementById('attack-button');
+
+        const questListElement = document.getElementById('quest-list');
+
+        let score = 0;
+        let autoClickerLevel = 0;
+        let autoClickerCost = 10;
+        let clickMultiplierLevel = 1;
+        let clickMultiplierCost = 20;
+
+        let enemy = {
+            name: 'Goblin',
+            hp: 100,
+            maxHp: 100,
+            reward: 50,
+            defeated: false
+        };
+
+        const quests = [
+            { description: 'Reach 100 score', target: 100, completed: false, reward: 20, check: () => score >= 100 },
+            { description: 'Buy 5 auto-clickers', target: 5, completed: false, reward: 50, check: () => autoClickerLevel >= 5 },
+            { description: 'Defeat the Goblin', target: 1, completed: false, reward: 100, check: () => enemy.defeated }
+        ];
+
+        clickerButton.addEventListener('click', () => {
+            score += clickMultiplierLevel;
+            updateScore();
+            checkQuests();
+        });
+
+        buyAutoClickerButton.addEventListener('click', () => {
+            if (score >= autoClickerCost) {
+                score -= autoClickerCost;
+                autoClickerLevel++;
+                autoClickerCost = Math.ceil(autoClickerCost * 1.5);
+                updateShop();
+                checkQuests();
+            }
+        });
+
+        buyClickMultiplierButton.addEventListener('click', () => {
+            if (score >= clickMultiplierCost) {
+                score -= clickMultiplierCost;
+                clickMultiplierLevel++;
+                clickMultiplierCost = Math.ceil(clickMultiplierCost * 2);
+                updateShop();
+                checkQuests();
+            }
+        });
+
+        attackButton.addEventListener('click', () => {
+            const attackCost = 1;
+            if (score >= attackCost) {
+                score -= attackCost;
+                enemy.hp -= 10;
+                if (enemy.hp <= 0) {
+                    score += enemy.reward;
+                    if(enemy.name === 'Goblin') enemy.defeated = true;
+                    spawnNewEnemy();
+                    checkQuests();
+                }
+                updateEnemy();
+                updateScore();
+            }
+        });
+
+        function spawnNewEnemy() {
+            enemy.name = 'Orc';
+            enemy.maxHp = Math.ceil(enemy.maxHp * 1.5);
+            enemy.hp = enemy.maxHp;
+            enemy.reward = Math.ceil(enemy.reward * 1.2);
+        }
+
+        function updateEnemy() {
+            enemyNameElement.textContent = enemy.name;
+            enemyHpElement.textContent = enemy.hp;
+            enemyMaxHpElement.textContent = enemy.maxHp;
+            const healthPercentage = (enemy.hp / enemy.maxHp) * 100;
+            enemyHealthBarElement.style.width = healthPercentage + '%';
+        }
+
+        function updateScore() {
+            scoreElement.textContent = score;
+        }
+
+        function updateShop() {
+            autoClickerLevelElement.textContent = autoClickerLevel;
+            autoClickerCostElement.textContent = autoClickerCost;
+            clickMultiplierLevelElement.textContent = clickMultiplierLevel + 'x';
+            clickMultiplierCostElement.textContent = clickMultiplierCost;
+            updateScore();
+        }
+
+        function renderQuests() {
+            questListElement.innerHTML = '';
+            quests.forEach((quest, index) => {
+                const questElement = document.createElement('div');
+                questElement.classList.add('quest-item');
+                if (quest.completed) {
+                    questElement.classList.add('completed-quest');
+                }
+                questElement.innerHTML = `<p>${quest.description} (Reward: ${quest.reward})</p>`;
+                questListElement.appendChild(questElement);
+            });
+        }
+
+        function checkQuests() {
+            quests.forEach(quest => {
+                if (!quest.completed && quest.check()) {
+                    score += quest.reward;
+                    quest.completed = true;
+                    renderQuests();
+                    updateScore();
+                }
+            });
+        }
+
+        setInterval(() => {
+            score += autoClickerLevel;
+            updateScore();
+            checkQuests();
+        }, 1000);
+
+        renderQuests();
+
+    </script>
+</body>
+</html>
